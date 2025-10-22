@@ -2,11 +2,3 @@
 [build]
   # Вказуємо Netlify, що наші функції знаходяться в папці 'netlify/functions'
   functions = "netlify/functions/"
-
-# Це налаштування перенаправлення гарантує,
-# що всі запити до /.netlify/functions/
-# коректно обробляються вашими функціями.
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
