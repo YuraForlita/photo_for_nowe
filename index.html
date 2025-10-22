@@ -30,6 +30,27 @@
   <!-- 4. Наш React-код (змінений .jsx) -->
   <script type="text/babel">
     
+    // --- !!! ВАЖЛИВЕ НАЛАШТУВАННЯ API-КЛЮЧА !!! ---
+    //
+    // 1. ДЛЯ РОБОТИ В CANVAS (тут):
+    //    Залиште це поле порожнім (`const apiKey = '';`).
+    //    Наше середовище автоматично підставить тестовий ключ при натисканні "Preview".
+    //
+    // 2. ДЛЯ ЛОКАЛЬНОГО ЗАПУСКУ (на вашому комп'ютері):
+    //    Вставте сюди свій Google API ключ, який має доступ до Gemini API.
+    //
+    // УВАГА: Навіть якщо ви вставите свій ключ, ви, найімовірніше, отримаєте
+    // ПОМИЛКУ "CORS" або "API error:". Це стандартна безпека. Google API
+    // не дозволяє прямі запити з браузера (з `file://` або неавторизованих
+    // доменів). Для реальної роботи потрібен бекенд-сервер.
+    //
+    // 3. ДЛЯ GITHUB ACTIONS (публікації):
+    //    Ми замінюємо ключ на "заповнювач".
+    //    GitHub Actions знайде '%%GEMINI_API_KEY%%' і замінить його
+    //    на ваш секрет під час публікації.
+    //
+    const apiKey = '%%GEMINI_API_KEY%%'; // <--- ЦЕ ЗАПОВНЮВАЧ ДЛЯ GITHUB ACTIONS
+    
     // --- Початкові дані для макетів ---
     // Ви можете редагувати цей список, щоб додати, видалити або змінити макети
     const initialLayouts = [
@@ -129,7 +150,6 @@
         setGeneratedImage(null); // Очищуємо попередній результат
 
         // Залишаємо API-ключ порожнім, Canvas надасть його
-        const apiKey = 'AIzaSyCmWMkZ4_M1VvXwt1HXVxXiwPUvotwt0ws';
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
 
         // Збираємо "частини" запиту
@@ -188,11 +208,21 @@
                 setGeneratedImage(`data:image/png;base64,${b64Data}`);
                 break; // Успіх, виходимо з циклу
               } else {
+                // Якщо відповідь 'ok', але зображення немає, показуємо текст (якщо є)
+                const textResponse = result?.candidates?.[0]?.content?.parts?.find(
+                  (p) => p.text
+                )?.text;
+                if (textResponse) {
+                  throw new Error(`API повернуло текст замість зображення: ${textResponse}`);
+                }
                 throw new Error('У відповіді API відсутнє зображення.');
               }
             } else {
               // Якщо відповідь не 'ok', спробуємо ще
-              throw new Error(`API error: ${response.statusText}`);
+              const errorBody = await response.json();
+              console.error("API Error Body:", errorBody);
+              const errorDetails = errorBody?.error?.message || response.statusText;
+              throw new Error(`API error: ${response.status} ${errorDetails}`);
             }
           } catch (err) {
             console.error(`Attempt ${i + 1} failed:`, err);
@@ -326,7 +356,7 @@
               </div>
               
               {/* Повідомлення про помилку */}
-              {error && <p className="text-red-400 text-sm">{error}</p>}
+              {error && <p className="text-red-400 text-sm break-words">{error}</p>}
             </div>
 
             {/* --- Кнопки дій --- */}
@@ -392,3 +422,5 @@
 
 </body>
 </html>
+
+

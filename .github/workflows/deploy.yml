@@ -1,0 +1,53 @@
+name: Deploy to GitHub Pages
+
+on:
+  # Запускати при пуші в гілку 'main'
+  push:
+    branches:
+      - main
+  # Дозволяє запускати вручну з вкладки Actions
+  workflow_dispatch:
+
+# Дозволи для GITHUB_TOKEN для публікації на GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Дозволити лише один одночасний запуск
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Replace API Key
+        # Ця команда знаходить рядок '%%GEMINI_API_KEY%%' у файлі index.html
+        # і замінює його на вміст вашого секрету
+        # ВАЖЛИВО: Створіть секрет з назвою 'GEMINI_API_KEY' у налаштуваннях репозиторію
+        run: |
+          sed -i 's|%%GEMINI_API_KEY%%|${{ secrets.GEMINI_API_KEY }}|g' index.html
+        # Використовуємо 's|...|...|g' замість 's/.../.../g' на випадок, 
+        # якщо ключ містить спеціальні символи '/'
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        # Завантажуємо всю папку для артефакту
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.' 
+          # Вказуємо, що index.html лежить в корені
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
