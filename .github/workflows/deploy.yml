@@ -47,7 +47,11 @@ jobs:
         with:
           path: '.' 
           # Вказуємо, що index.html лежить в корені
+          name: my-custom-pages-artifact # <-- ЗМІНА 1: Унікальне ім'я артефакту
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: my-custom-pages-artifact # <-- ЗМІНА 2: Використовуємо цей артефакт
+
