@@ -217,14 +217,33 @@
                     body: JSON.stringify(frontendPayload) 
                 });
 
+                let result;
+                try {
+                    // Спробуємо розпарсити відповідь як JSON
+                    result = await response.json();
+                } catch (jsonError) {
+                    // Цей блок спрацює, якщо сервер повернув не-JSON (наприклад, HTML сторінку помилки)
+                    // Це і є причина помилки "Unexpected token '<'"
+                    console.error('Failed to parse JSON response:', jsonError);
+                    // Спробуємо отримати текстовий вміст помилки для діагностики
+                    const errorText = await response.text(); 
+                    console.error('Server response (not JSON):', errorText);
+                    
+                    // Даємо користувачу більш зрозумілу помилку
+                    if (response.status === 404) {
+                         throw new Error('Помилка 404: Серверний обробник не знайдено. Перевірте налаштування Netlify.');
+                    } else if (response.status === 500) {
+                         throw new Error('Помилка 500: Внутрішня помилка сервера. Перевірте логі Netlify функції.');
+                    }
+                    throw new Error(`Помилка сервера (${response.status}). Отримано неочікувану відповідь.`);
+                }
+
                 if (!response.ok) {
-                    // Обробка помилок, які повертає наш сервер
-                    const errorData = await response.json();
-                    throw new Error(`Помилка сервера: ${errorData.error || response.statusText}`);
+                    // Якщо відповідь - це JSON, але з помилкою (напр. { "error": "..." })
+                    throw new Error(`Помилка сервера: ${result.error || response.statusText}`);
                 }
                 
                 // 4. ЗМІНА: Отримуємо чисті дані (тільки зображення) від нашого сервера
-                const result = await response.json();
                 const base64Image = result.base64Image;
 
                 if (base64Image) {
@@ -284,4 +303,5 @@
     </script>
 </body>
 </html>
+
 
