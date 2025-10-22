@@ -1,4 +1,12 @@
 # Цей файл явно вказує Netlify, де шукати ваші серверні функції.
 [build]
-  # Вказуємо Netlify, що наші функції знаходяться в папці 'netlify/functions'
   functions = "netlify/functions/"
+
+# Це правило перенаправляє всі запити з /api/ (наприклад, /api/generate-image)
+# на ваші серверні функції (наприклад, /.netlify/functions/generate-image).
+# Це надійний спосіб налаштування API.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = true # Примусово застосовувати це правило
