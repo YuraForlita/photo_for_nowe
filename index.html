@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -199,24 +198,34 @@
             try {
                 const base64Data = fileInput.files.length > 0 ? await toBase64(fileInput.files[0]) : null;
                 const mimeType = fileInput.files.length > 0 ? fileInput.files[0].type : null;
-
-                const apiKey = "AIzaSyAc0HofIEXor8KONLhxhkHBxIYFNbaucGE";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
                 
-                const parts = [
-                    { text: `Згенеруй високоякісне рекламне зображення. Це надзвичайно важливо: зображення повинно мати точний розмір ${layout.width} пікселів в ширину та ${layout.height} пікселів у висоту. Запит користувача: "${userPrompt}"` }
-                ];
-                if (base64Data) {
-                    parts.push({ inlineData: { mimeType, data: base64Data } });
+                // 1. ЗМІНА: Ключ API видалено. URL вказує на наш сервер
+                const apiUrl = '/.netlify/functions/generate-image';
+                
+                // 2. ЗМІНА: Створюємо payload для НАШОГО сервера
+                const frontendPayload = {
+                    userPrompt: userPrompt,
+                    base64Data: base64Data,
+                    mimeType: mimeType,
+                    layout: layout // Передаємо дані про розміри
+                };
+
+                const response = await fetchWithRetry(apiUrl, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    // 3. ЗМІНА: Відправляємо наш власний, безпечний payload
+                    body: JSON.stringify(frontendPayload) 
+                });
+
+                if (!response.ok) {
+                    // Обробка помилок, які повертає наш сервер
+                    const errorData = await response.json();
+                    throw new Error(`Помилка сервера: ${errorData.error || response.statusText}`);
                 }
-                const payload = { contents: [{ parts }], generationConfig: { responseModalities: ['IMAGE'] } };
-
-                const response = await fetchWithRetry(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-
-                if (!response.ok) throw new Error(`Помилка API: ${response.statusText}`);
-
+                
+                // 4. ЗМІНА: Отримуємо чисті дані (тільки зображення) від нашого сервера
                 const result = await response.json();
-                const base64Image = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                const base64Image = result.base64Image;
 
                 if (base64Image) {
                     const imageUrl = `data:image/png;base64,${base64Image}`;
@@ -225,7 +234,7 @@
                     actionsContainer.classList.remove('hidden');
                     generateButton.classList.add('hidden');
                 } else {
-                    throw new Error('Не вдалося отримати зображення з відповіді API.');
+                    throw new Error('Не вдалося отримати зображення з відповіді сервера.');
                 }
             } catch (error) {
                 console.error('Помилка генерації:', error);
