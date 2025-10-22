@@ -200,8 +200,7 @@
                 const base64Data = fileInput.files.length > 0 ? await toBase64(fileInput.files[0]) : null;
                 const mimeType = fileInput.files.length > 0 ? fileInput.files[0].type : null;
 
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+                const apiKey = "AIzaSyAc0HofIEXor8KONLhxhkHBxIYFNbaucGE";
                 
                 const parts = [
                     { text: `Згенеруй високоякісне рекламне зображення. Це надзвичайно важливо: зображення повинно мати точний розмір ${layout.width} пікселів в ширину та ${layout.height} пікселів у висоту. Запит користувача: "${userPrompt}"` }
