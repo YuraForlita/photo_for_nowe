@@ -200,7 +200,10 @@
                 const mimeType = fileInput.files.length > 0 ? fileInput.files[0].type : null;
                 
                 // 1. ЗМІНА: Ключ API видалено. URL вказує на наш сервер
-                const apiUrl = '/.netlify/functions/generate-image';
+                //
+                // !!!!! ОСЬ ТУТ БУЛА ПОМИЛКА - ЗМІНЕНО НА /api/generate-image !!!!!
+                //
+                const apiUrl = '/api/generate-image';
                 
                 // 2. ЗМІНА: Створюємо payload для НАШОГО сервера
                 const frontendPayload = {
@@ -210,11 +213,46 @@
                     layout: layout // Передаємо дані про розміри
                 };
 
+                // ВАЖЛИВО: Ваш `generate-image.mjs` не був налаштований на прийом `frontendPayload`.
+                // Він очікував `contents` та `systemInstruction`.
+                // Я зміню логіку `index.html`, щоб він відповідав вашому `generate-image.mjs`.
+
+                // --- ПОЧАТОК ВИПРАВЛЕННЯ ЛОГІКИ ---
+                
+                // Формуємо `contents` так, як очікує ваш `generate-image.mjs`
+                const contents = [{ parts: [{ text: userPrompt }] }];
+                if (base64Data) {
+                    contents[0].parts.push({
+                        inlineData: {
+                            mimeType: mimeType,
+                            data: base64Data
+                        }
+                    });
+                }
+
+                // Формуємо `systemInstruction`
+                const systemInstruction = {
+                    parts: [{
+                        text: `Створи зображення для банера.
+- Ідея: ${userPrompt}
+- ВАЖЛИВО: Зображення МАЄ бути точно ${layout.width} пікселів у ширину та ${layout.height} пікселів у висоту.
+- Формат: ${layout.name}`
+                    }]
+                };
+
+                // Це той payload, який очікує ваш `generate-image.mjs`
+                const finalApiPayload = {
+                    contents: contents,
+                    systemInstruction: systemInstruction
+                };
+
+                // --- КІНЕЦЬ ВИПРАВЛЕННЯ ЛОГІКИ ---
+
                 const response = await fetchWithRetry(apiUrl, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
-                    // 3. ЗМІНА: Відправляємо наш власний, безпечний payload
-                    body: JSON.stringify(frontendPayload) 
+                    // 3. ЗМІНА: Відправляємо payload у форматі, який очікує сервер
+                    body: JSON.stringify(finalApiPayload) 
                 });
 
                 let result;
@@ -231,9 +269,11 @@
                     
                     // Даємо користувачу зрозумілу помилку
                     if (response.status === 404) {
-                         throw new Error('Помилка 404: Серверний обробник не знайдено. Перевірте шлях (має бути netlify/functions).');
+                        throw new Error('Помилка 404: API-шлях не знайдено. Перевірте `netlify.toml` та шлях `/api/generate-image`.');
+                    } else if (response.status === 405) {
+                        throw new Error('Помилка 405: Метод не дозволено. Сервер не приймає POST. Перевірте `netlify.toml`.');
                     } else if (response.status === 500) {
-                         throw new Error('Помилка 500: Внутрішня помилка сервера. Перевірте логі Netlify та чи додано GEMINI_API_KEY.');
+                        throw new Error('Помилка 500: Внутрішня помилка сервера. Перевірте логі Netlify та чи додано GEMINI_API_KEY.');
                     }
                     throw new Error(`Помилка сервера (${response.status}). Отримано не-JSON відповідь.`);
                 }
@@ -243,8 +283,8 @@
                     throw new Error(`Помилка сервера: ${result.error || response.statusText}`);
                 }
                 
-                // 4. ЗМІНА: Отримуємо чисті дані (тільки зображення) від нашого сервера
-                const base64Image = result.base64Image;
+                // Отримуємо дані про зображення з відповіді Google
+                const base64Image = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
 
                 if (base64Image) {
                     const imageUrl = `data:image/png;base64,${base64Image}`;
@@ -253,6 +293,7 @@
                     actionsContainer.classList.remove('hidden');
                     generateButton.classList.add('hidden');
                 } else {
+                    console.error("Відповідь від сервера не містить зображення:", result);
                     throw new Error('Не вдалося отримати зображення з відповіді сервера.');
                 }
             } catch (error) {
@@ -303,6 +344,3 @@
     </script>
 </body>
 </html>
-
-
-
