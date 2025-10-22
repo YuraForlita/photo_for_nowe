@@ -218,24 +218,24 @@
                 });
 
                 let result;
+                // 1. Отримуємо відповідь сервера як ТЕКСТ (це читає тіло відповіді лише один раз)
+                const responseText = await response.text();
+
                 try {
-                    // Спробуємо розпарсити відповідь як JSON
-                    result = await response.json();
+                    // 2. Спробуємо розпарсити цей текст як JSON
+                    result = JSON.parse(responseText);
                 } catch (jsonError) {
-                    // Цей блок спрацює, якщо сервер повернув не-JSON (наприклад, HTML сторінку помилки)
-                    // Це і є причина помилки "Unexpected token '<'"
+                    // 3. Якщо не вийшло - значить, сервер повернув HTML сторінку помилки
                     console.error('Failed to parse JSON response:', jsonError);
-                    // Спробуємо отримати текстовий вміст помилки для діагностики
-                    const errorText = await response.text(); 
-                    console.error('Server response (not JSON):', errorText);
+                    console.error('Server response (not JSON):', responseText); // Це покаже HTML помилки в консолі
                     
-                    // Даємо користувачу більш зрозумілу помилку
+                    // Даємо користувачу зрозумілу помилку
                     if (response.status === 404) {
-                         throw new Error('Помилка 404: Серверний обробник не знайдено. Перевірте налаштування Netlify.');
+                         throw new Error('Помилка 404: Серверний обробник не знайдено. Перевірте шлях (має бути netlify/functions).');
                     } else if (response.status === 500) {
-                         throw new Error('Помилка 500: Внутрішня помилка сервера. Перевірте логі Netlify функції.');
+                         throw new Error('Помилка 500: Внутрішня помилка сервера. Перевірте логі Netlify та чи додано GEMINI_API_KEY.');
                     }
-                    throw new Error(`Помилка сервера (${response.status}). Отримано неочікувану відповідь.`);
+                    throw new Error(`Помилка сервера (${response.status}). Отримано не-JSON відповідь.`);
                 }
 
                 if (!response.ok) {
@@ -303,5 +303,6 @@
     </script>
 </body>
 </html>
+
 
 
